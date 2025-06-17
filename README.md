@@ -62,7 +62,7 @@ Features:
 **Warning, consider this a preview. If you test it, please let me know if it works**
 
 ```bash
-pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/rocm6.4
+pip3 install --pre torch torchvision torchaudio torchao --index-url https://download.pytorch.org/whl/nightly/rocm6.4
 USE_AMD=1 pip install --no-build-isolation .[deepspeed]
 
 # Download example axolotl configs, deepspeed configs
