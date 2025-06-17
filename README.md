@@ -54,12 +54,12 @@ Features:
 **Requirements**:
 
 - NVIDIA GPU (Ampere or newer for `bf16` and Flash Attention) or AMD GPU
-- Python 3.11
+- Python 3.12
 - PyTorch ≥2.5.1
 
 ### Installation
 
-**Warning, consider this a preview. If you test it, please let me know if it works**
+**Warning, consider this a preview. If you test it, please let me know if it works. You need python 3.12!!!**
 
 ```bash
 pip3 install --pre torch torchvision torchaudio torchao --index-url https://download.pytorch.org/whl/nightly/rocm6.4
