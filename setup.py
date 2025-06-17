@@ -68,7 +68,7 @@ def parse_requirements(extras_require_map):
                 for req in _install_requires
                 if re.split(r"[>=<]", req)[0].strip() not in skip_packages
             ]
-            # Remove vllm from extras_require for AMD
+            # Remove vllm, flash-attn and ring-flash-attn from extras_require for AMD
             if "vllm" in extras_require_map:
                 del extras_require_map["vllm"]
             if "flash-attn" in extras_require_map:
