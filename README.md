@@ -59,9 +59,11 @@ Features:
 
 ### Installation
 
+**Warning, consider this a preview. If you test it, please let me know if it works**
+
 ```bash
-pip3 install -U packaging==23.2 setuptools==75.8.0 wheel ninja
-pip3 install --no-build-isolation axolotl[flash-attn,deepspeed]
+pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/rocm6.4
+USE_AMD=1 pip install --no-build-isolation .[deepspeed]
 
 # Download example axolotl configs, deepspeed configs
 axolotl fetch examples
