@@ -13,17 +13,30 @@ from setuptools import find_packages, setup
 def parse_requirements(extras_require_map):
     _install_requires = []
     _dependency_links = []
-    with open("./requirements.txt", encoding="utf-8") as requirements_file:
-        lines = [r.strip() for r in requirements_file.readlines()]
-        for line in lines:
-            is_extras = "deepspeed" in line or "mamba-ssm" in line
-            if line.startswith("--extra-index-url"):
-                # Handle custom index URLs
-                _, url = line.split()
-                _dependency_links.append(url)
-            elif not is_extras and line and line[0] != "#":
-                # Handle standard packages
-                _install_requires.append(line)
+    if os.environ.get("USE_AMD") == "1":
+        with open("./requirements_amd.txt", encoding="utf-8") as requirements_file:
+            lines = [r.strip() for r in requirements_file.readlines()]
+            for line in lines:
+                is_extras = "deepspeed" in line or "mamba-ssm" in line
+                if line.startswith("--extra-index-url"):
+                    # Handle custom index URLs
+                    _, url = line.split()
+                    _dependency_links.append(url)
+                elif not is_extras and line and line[0] != "#":
+                    # Handle standard packages
+                    _install_requires.append(line)
+    else:
+        with open("./requirements.txt", encoding="utf-8") as requirements_file:
+            lines = [r.strip() for r in requirements_file.readlines()]
+            for line in lines:
+                is_extras = "deepspeed" in line or "mamba-ssm" in line
+                if line.startswith("--extra-index-url"):
+                    # Handle custom index URLs
+                    _, url = line.split()
+                    _dependency_links.append(url)
+                elif not is_extras and line and line[0] != "#":
+                    # Handle standard packages
+                    _install_requires.append(line)
     try:
         xformers_version = [req for req in _install_requires if "xformers" in req][0]
         autoawq_version = [req for req in _install_requires if "autoawq" in req][0]
@@ -45,6 +58,23 @@ def parse_requirements(extras_require_map):
             print(
                 _install_requires, [req in skip_packages for req in _install_requires]
             )
+        elif os.environ.get("USE_AMD") == "1":
+            # skip packages not compatible with AMD GPUs
+            skip_packages = [
+                "xformers",
+            ]
+            _install_requires = [
+                req
+                for req in _install_requires
+                if re.split(r"[>=<]", req)[0].strip() not in skip_packages
+            ]
+            # Remove vllm from extras_require for AMD
+            if "vllm" in extras_require_map:
+                del extras_require_map["vllm"]
+            if "flash-attn" in extras_require_map:
+                del extras_require_map["flash-attn"]
+            if "ring-flash-attn" in extras_require_map:
+                del extras_require_map["ring-flash-attn"]
         else:
             # detect the version of torch already installed
             # and set it so dependencies don't clobber the torch version
@@ -111,7 +141,9 @@ def get_package_version():
 
 
 extras_require = {
-    "flash-attn": ["flash-attn==2.7.4.post1"],
+    "flash-attn": [
+        "flash-attn==2.7.4.post1"
+    ],
     "ring-flash-attn": [
         "flash-attn==2.7.4.post1",
         "ring-flash-attn>=0.1.4",
