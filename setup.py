@@ -24,80 +24,7 @@ def parse_requirements(extras_require_map):
             elif not is_extras and line and line[0] != "#":
                 # Handle standard packages
                 _install_requires.append(line)
-    try:
-        xformers_version = [req for req in _install_requires if "xformers" in req][0]
-        autoawq_version = [req for req in _install_requires if "autoawq" in req][0]
-        if "Darwin" in platform.system():
-            # skip packages not compatible with OSX
-            skip_packages = [
-                "bitsandbytes",
-                "triton",
-                "mamba-ssm",
-                "xformers",
-                "autoawq",
-                "liger-kernel",
-            ]
-            _install_requires = [
-                req
-                for req in _install_requires
-                if re.split(r"[>=<]", req)[0].strip() not in skip_packages
-            ]
-            print(
-                _install_requires, [req in skip_packages for req in _install_requires]
-            )
-        else:
-            # detect the version of torch already installed
-            # and set it so dependencies don't clobber the torch version
-            try:
-                torch_version = version("torch")
-            except PackageNotFoundError:
-                torch_version = "2.6.0"  # default to torch 2.6
-            _install_requires.append(f"torch=={torch_version}")
-
-            version_match = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?", torch_version)
-            if version_match:
-                major, minor, patch = version_match.groups()
-                major, minor = int(major), int(minor)
-                patch = (
-                    int(patch) if patch is not None else 0
-                )  # Default patch to 0 if not present
-            else:
-                raise ValueError("Invalid version format")
-
-            if (major, minor) >= (2, 7):
-                _install_requires.pop(_install_requires.index(xformers_version))
-                if patch == 0:
-                    _install_requires.append("xformers==0.0.30")
-                else:
-                    _install_requires.append("xformers==0.0.31.post1")
-                extras_require_map["vllm"] = ["vllm>=0.9.0"]
-            elif (major, minor) >= (2, 6):
-                _install_requires.pop(_install_requires.index(xformers_version))
-                _install_requires.append(
-                    "xformers==0.0.29.post2"
-                )  # vllm needs post2 w torch 2.6
-                extras_require_map["vllm"] = ["vllm==0.8.5.post1"]
-            elif (major, minor) >= (2, 5):
-                _install_requires.pop(_install_requires.index(xformers_version))
-                if patch == 0:
-                    _install_requires.append("xformers==0.0.28.post2")
-                else:
-                    _install_requires.append("xformers>=0.0.28.post3")
-                _install_requires.pop(_install_requires.index(autoawq_version))
-            elif (major, minor) >= (2, 4):
-                if patch == 0:
-                    _install_requires.pop(_install_requires.index(xformers_version))
-                    _install_requires.append("xformers>=0.0.27")
-                else:
-                    _install_requires.pop(_install_requires.index(xformers_version))
-                    _install_requires.append("xformers==0.0.28.post1")
-            else:
-                raise ValueError("axolotl requires torch>=2.4")
-
-    except PackageNotFoundError:
-        pass
     return _install_requires, _dependency_links, extras_require_map
-
 
 def get_package_version():
     with open(
@@ -114,7 +41,9 @@ def get_package_version():
 
 
 extras_require = {
-    "flash-attn": ["flash-attn==2.8.0.post2"],
+    "flash-attn": [
+        "flash-attn==2.8.0.post2"
+    ],
     "ring-flash-attn": [
         "flash-attn==2.8.0.post2",
         "ring-flash-attn>=0.1.5",
@@ -149,9 +78,6 @@ extras_require = {
     ],
     "ray": [
         "ray[train]",
-    ],
-    "vllm": [
-        "vllm==0.7.2",
     ],
     "llmcompressor": [
         "llmcompressor==0.5.1",

@@ -53,28 +53,15 @@ Features:
 
 **Requirements**:
 
-- NVIDIA GPU (Ampere or newer for `bf16` and Flash Attention) or AMD GPU
-- Python 3.11
-- PyTorch ≥2.6.0
+- AMD GPU
+- *Python 3.12!*
+- PyTorch
 
-### Installation
+#### Using AMD
 
-#### Using pip
-
-```bash
-pip3 install -U packaging==23.2 setuptools==75.8.0 wheel ninja
-pip3 install --no-build-isolation axolotl[flash-attn,deepspeed]
-
-# Download example axolotl configs, deepspeed configs
-axolotl fetch examples
-axolotl fetch deepspeed_configs  # OPTIONAL
 ```
-
-#### Using Docker
-
-Installing with Docker can be less error prone than installing in your own environment.
-```bash
-docker run --gpus '"all"' --rm -it axolotlai/axolotl:main-latest
+pip install -r requirements_amd.txt
+pip install --no-build-isolation -e .[deepspeed]
 ```
 
 Other installation approaches are described [here](https://docs.axolotl.ai/docs/installation.html).
