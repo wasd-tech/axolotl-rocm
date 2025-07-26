@@ -2,7 +2,6 @@
 
 # pylint: disable=too-many-lines
 
-import os
 from typing import Annotated, Any, Literal
 
 from annotated_types import MinLen
@@ -15,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 
+from axolotl.utils.datasets import get_default_process_count
 from axolotl.utils.logging import get_logger
 from axolotl.utils.schemas.datasets import (
     DatasetConfig,
@@ -343,7 +343,20 @@ class AxolotlInputConfig(
     fp16: bool | None = Field(
         default=None, json_schema_extra={"description": "Use CUDA fp16"}
     )
-    fp8: bool | None = None
+    fp8: bool | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "Enable FP8 mixed precision training using TorchAO. Best "
+            "used in combination with torch.compile."
+        },
+    )
+    fp8_enable_fsdp_float8_all_gather: bool | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "Enable FSDP float8 all-gather optimization for FP8 training. Can "
+            "improve training speed by 10-15% when FSDP is enabled."
+        },
+    )
     bfloat16: bool | None = Field(
         default=None,
         json_schema_extra={
@@ -435,7 +448,7 @@ class AxolotlInputConfig(
     pad_to_sequence_len: bool | None = Field(
         default=None,
         json_schema_extra={
-            "description": "Pad inputs so each step uses constant sized buffers. This will reduce memory fragmentation and may prevent OOMs, by re-using memory more efficiently"
+            "description": "Pad inputs so each step uses constant sized buffers. This will reduce memory fragmentation and may prevent OOMs, by re-using memory more efficiently. Defaults to True if `sample_packing` enabled"
         },
     )
     curriculum_sampling: bool | None = Field(
@@ -584,7 +597,7 @@ class AxolotlInputConfig(
     )
 
     tiled_mlp_use_original_mlp: bool | None = Field(
-        default=None,
+        default=True,
         json_schema_extra={
             "description": "Whether to use original mlp for ALST tiled mlp. Otherwise uses a generic MLP based on llama."
         },
@@ -1211,11 +1224,6 @@ class AxolotlConfigWCapabilities(AxolotlInputConfig):
     @classmethod
     def default_dataset_processes(cls, data):
         if data.get("dataset_processes") is None:
-            if axolotl_dataset_processes := os.environ.get("AXOLOTL_DATASET_PROCESSES"):
-                data["dataset_processes"] = int(axolotl_dataset_processes)
-            elif runpod_cpu_count := os.environ.get("RUNPOD_CPU_COUNT"):
-                data["dataset_processes"] = int(runpod_cpu_count)
-            else:
-                data["dataset_processes"] = os.cpu_count()
+            data["dataset_processes"] = get_default_process_count()
 
         return data

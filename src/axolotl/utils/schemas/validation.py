@@ -362,6 +362,36 @@ class TrainingValidationMixin:
 
     @model_validator(mode="before")
     @classmethod
+    def check_fp8_config(cls, data):
+        if data.get("fp8") and not data.get("torch_compile"):
+            LOG.warning(
+                "torch_compile is strongly recommended for FP8 training in order to "
+                "see speed improvements. Please consider setting `torch_compile: "
+                "true` in your config."
+            )
+        if data.get("fp8") and (
+            data.get("fsdp_config", {}).get("activation_checkpointing", False) is True
+            or data.get("fsdp_config", {}).get("fsdp_activation_checkpointing", False)
+            is True
+        ):
+            LOG.warning(
+                "FP8 + FSDP2 + activation checkpointing may be slower than BF16 "
+                "training. Please considering setting `activation_checkpointing: false` "
+                "in your FSDP config."
+            )
+        if (
+            data.get("fp8_enable_fsdp_float8_all_gather")
+            and not data.get("fsdp_version", None) == 2
+        ):
+            raise ValueError(
+                "fp8_enable_fsdp_float8_all_gather requires FSDP2 (fsdp_version: 2) "
+                "to be used."
+            )
+
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
     def check_use_reentrant_mismatch(cls, data):
         if (
             data.get("unfrozen_parameters")
@@ -480,19 +510,6 @@ class TrainingValidationMixin:
                 "pretraining_dataset and include_tokens_per_second cannot be used together."
             )
 
-        return data
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_tiled_mlp_deepspeed(cls, data):
-        capabilities = data.get("capabilities")
-        n_gpu = 0
-        if capabilities and capabilities.get("n_gpu", 0) >= 1:
-            n_gpu = capabilities.get("n_gpu", 0)
-        if data.get("tiled_mlp", False) and (n_gpu > 1 and not data.get("deepspeed")):
-            raise ValueError(
-                "tiled_mlp requires deepspeed ZeRO to be enabled for multi-gpu"
-            )
         return data
 
 
@@ -1074,35 +1091,16 @@ class ModelCompatibilityValidationMixin:
                 "`offload` is deprecated for gradient_checkpointing, use `activation_offloading: true` or `activation_offloading: legacy`"
             )
             self.gradient_checkpointing = True
-            if self.adapter and "lora" in self.adapter:
-                LOG.warning(
-                    "offloading with CUDA streams is not supported for LoRA adapters, using the `activation_offloading: legacy` implementation."
-                )
-                self.activation_offloading = "legacy"
-            else:
-                LOG.warning(
-                    "`offload` uses a new stream implementation; to use the previous implementation, use `activation_offloading: legacy`"
-                )
-                self.activation_offloading = True
+            LOG.warning(
+                "`offload` now uses a new stream implementation; to use the previous implementation, use `activation_offloading: legacy`"
+            )
+            self.activation_offloading = True
         if self.gradient_checkpointing == "offload_disk":
             LOG.warning(
                 "`offload_disk` is deprecated for gradient_checkpointing, use `activation_offloading: disk`"
             )
             self.gradient_checkpointing = True
             self.activation_offloading = "disk"
-        return self
-
-    @model_validator(mode="after")
-    def check_activation_offloading_w_lora(self):
-        if (
-            self.activation_offloading is True
-            and self.adapter
-            and "lora" in self.adapter
-        ):
-            LOG.warning(
-                "activation_offloading with CUDA streams is not supported for LoRA adapters. Setting `activation_offloading: legacy`"
-            )
-            self.activation_offloading = "legacy"
         return self
 
     @model_validator(mode="after")

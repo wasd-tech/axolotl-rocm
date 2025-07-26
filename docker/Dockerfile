@@ -11,6 +11,7 @@ ENV PYTORCH_VERSION=$PYTORCH_VERSION
 
 RUN apt-get update && \
     apt-get install -y --allow-change-held-packages vim curl nano libnccl2 libnccl-dev rsync s3fs && \
+    rm -rf /var/cache/apt/archives && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
@@ -30,7 +31,11 @@ RUN if [ "$AXOLOTL_EXTRAS" != "" ] ; then \
     pip install pytest && \
     pip cache purge
 
-# fix so that git fetch/pull from remote works
+# fix so that git fetch/pull from remote works with shallow clone
 RUN git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*" && \
     git config --get remote.origin.fetch && \
     git config --global credential.helper store
+
+COPY .axolotl-complete.bash /root/.axolotl-complete.bash
+RUN chmod +x /root/.axolotl-complete.bash && \
+    echo 'source /root/.axolotl-complete.bash' >> ~/.bashrc
