@@ -82,17 +82,25 @@ class AxolotlTrainingMixins:
         default=None,
         metadata={"help": "how often to reset for ReLoRA"},
     )
-    relora_warmup_steps: Optional[int] = field(
-        default=None,
-        metadata={"help": "how many warmup steps to take after reset for ReLoRA"},
-    )
-    relora_anneal_steps: Optional[int] = field(
-        default=None,
-        metadata={"help": "how many warmup steps to take after reset for ReLoRA"},
-    )
     relora_prune_ratio: Optional[float] = field(
         default=0.9,
         metadata={"help": "prune ratio for magnitude pruning of the optimizer"},
+    )
+    jagged_restart_steps: Optional[int] = field(
+        default=None,
+        metadata={"help": "how often to reset for jagged restarts"},
+    )
+    jagged_restart_warmup_steps: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": "how many warmup steps to take after reset for jagged restarts"
+        },
+    )
+    jagged_restart_anneal_steps: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": "how many anneal steps to take before reset for jagged restarts"
+        },
     )
     bench_split: Optional[str] = field(
         default="eval", metadata={"help": "The benchmark split to run on"}
@@ -235,3 +243,18 @@ class AxolotlTrainingMixins:
     )
 
     # end of multi-modal section
+
+    dion_learning_rate: float | None = field(
+        default=None,
+        metadata={"help": "The learning rate for Dion"},
+    )
+    dion_momentum: float | None = field(
+        default=None,
+        metadata={"help": "The momentum for Dion"},
+    )
+    dion_rank_fraction: float | None = field(
+        default=None,
+    )
+    dion_rank_multiple_of: int | None = field(
+        default=None,
+    )

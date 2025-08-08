@@ -25,6 +25,7 @@
 
 ## 🎉 Latest Updates
 
+- 2025/07: Voxtral with mistral-common tokenizer support has been integrated in Axolotl. Read the [docs](https://github.com/axolotl-ai-cloud/axolotl/tree/main/examples/voxtral)!
 - 2025/07: TiledMLP support for single-GPU to multi-GPU training with DDP, DeepSpeed and FSDP support has been added to support Arctic Long Sequence Training. (ALST). See [examples](https://github.com/axolotl-ai-cloud/axolotl/tree/main/examples/alst) for using ALST with Axolotl!
 - 2025/06: Magistral with mistral-common tokenizer support has been added to Axolotl. See [examples](https://github.com/axolotl-ai-cloud/axolotl/tree/main/examples/magistral) to start training your own Magistral models with Axolotl!
 - 2025/05: Quantization Aware Training (QAT) support has been added to Axolotl. Explore the [docs](https://docs.axolotl.ai/docs/qat.html) to learn more!
@@ -67,6 +68,20 @@ pip install --no-build-isolation -e .[deepspeed]
 
 Other installation approaches are described [here](https://docs.axolotl.ai/docs/installation.html).
 
+#### Cloud Providers
+
+<details>
+
+- [RunPod](https://runpod.io/gsc?template=v2ickqhz9s&ref=6i7fkpdz)
+- [Vast.ai](https://cloud.vast.ai?ref_id=62897&template_id=bdd4a49fa8bce926defc99471864cace&utm_source=github&utm_medium=developer_community&utm_campaign=template_launch_axolotl&utm_content=readme)
+- [PRIME Intellect](https://app.primeintellect.ai/dashboard/create-cluster?image=axolotl&location=Cheapest&security=Cheapest&show_spot=true)
+- [Modal](https://www.modal.com?utm_source=github&utm_medium=github&utm_campaign=axolotl)
+- [Novita](https://novita.ai/gpus-console?templateId=311)
+- [JarvisLabs.ai](https://jarvislabs.ai/templates/axolotl)
+- [Latitude.sh](https://latitude.sh/blueprint/989e0e79-3bf6-41ea-a46b-1f246e309d5c)
+
+</details>
+
 ### Your First Fine-tune
 
 ```bash
@@ -107,12 +122,6 @@ That's it! Check out our [Getting Started Guide](https://docs.axolotl.ai/docs/ge
 Contributions are welcome! Please see our [Contributing Guide](https://github.com/axolotl-ai-cloud/axolotl/blob/main/.github/CONTRIBUTING.md) for details.
 
 ## ❤️ Sponsors
-
-Thank you to our sponsors who help make Axolotl possible:
-
-- [Modal](https://www.modal.com?utm_source=github&utm_medium=github&utm_campaign=axolotl) - Modal lets you run
-jobs in the cloud, by just writing a few lines of Python. Customers use Modal to deploy Gen AI models at large scale,
-fine-tune large language models, run protein folding simulations, and much more.
 
 Interested in sponsoring? Contact us at [wing@axolotl.ai](mailto:wing@axolotl.ai)
 

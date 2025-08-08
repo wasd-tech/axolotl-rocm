@@ -115,8 +115,11 @@ def setup_reference_model(
             LOG.debug("Passing model_ref: None to RL trainer")
             model_ref = None  # explicit setting to None
         else:
+            reference_model: bool = True
+            if cfg.rl == RLType.GRPO and cfg.trl.beta == 0:
+                reference_model = False
             # load the model again for model_ref/baseline
-            model_loader = ModelLoader(cfg, tokenizer, reference_model=True)
+            model_loader = ModelLoader(cfg, tokenizer, reference_model=reference_model)
             model_ref, _ = model_loader.load()
     return model_ref
 
@@ -202,7 +205,7 @@ def execute_training(
                 )
             )
 
-        if cfg.sequence_parallel_degree > 1:
+        if cfg.context_parallel_size > 1:
             models = [trainer.model]
             if hasattr(trainer, "ref_model") and trainer.ref_model:
                 models.append(trainer.ref_model)
@@ -210,11 +213,12 @@ def execute_training(
             stack.enter_context(
                 SequenceParallelContextManager(
                     models=models,
-                    sequence_parallel_degree=cfg.sequence_parallel_degree,
+                    context_parallel_size=cfg.context_parallel_size,
                     gradient_accumulation_steps=cfg.gradient_accumulation_steps,
                     ring_attn_func=cfg.ring_attn_func,
                     heads_k_stride=cfg.heads_k_stride,
                     gather_outputs=cfg.rl is RLType.GRPO,
+                    device_mesh=trainer.accelerator.torch_device_mesh,
                 )
             )
 
@@ -264,14 +268,14 @@ def save_trained_model(
             "your model weights with `axolotl quantize`."
         )
     # Handle ReLoRA early return case
-    if cfg.relora_steps:
+    if cfg.relora:
         if cfg.adapter == "lora" and not (cfg.load_in_4bit or cfg.load_in_8bit):
             model = model.merge_and_unload()
         else:
             # final model weights have already been saved by `ReLoRACallback.on_train_end`
             return
 
-    if trainer.is_fsdp_enabled:
+    if trainer.is_fsdp_enabled or cfg.fsdp_config:
         if cfg.fsdp_config or cfg.fsdp:
             if cfg.fsdp_config.final_state_dict_type:
                 state_dict_type = cfg.fsdp_config.final_state_dict_type
@@ -562,6 +566,10 @@ def train(
     # Execute the training
     resume_from_checkpoint = determine_resume_checkpoint(cfg)
     execute_training(cfg, trainer, resume_from_checkpoint)
+
+    # clear cache
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     # Save the trained model and cleanup
     save_trained_model(cfg, trainer, model, safe_serialization)

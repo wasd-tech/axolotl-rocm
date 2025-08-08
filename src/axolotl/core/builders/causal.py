@@ -19,7 +19,6 @@ from axolotl.core.trainers import (
     AxolotlPRMTrainer,
     AxolotlRewardTrainer,
     AxolotlTrainer,
-    ReLoRATrainer,
 )
 from axolotl.integrations.base import PluginManager
 from axolotl.monkeypatch.multipack import SUPPORTED_MULTIPACK_MODEL_TYPES
@@ -44,6 +43,7 @@ from axolotl.utils.collators import (
     V2BatchSamplerDataCollatorForSeq2Seq,
 )
 from axolotl.utils.collators.mm_chat import MultiModalChatDataCollator
+from axolotl.utils.import_helper import get_cls_from_module_str
 from axolotl.utils.logging import get_logger
 
 LOG = get_logger(__name__)
@@ -58,7 +58,7 @@ class HFCausalTrainerBuilder(TrainerBuilderBase):
     def get_callbacks(self):
         callbacks = super().get_callbacks()
 
-        if self.cfg.relora_steps:
+        if self.cfg.relora:
             callbacks.append(ReLoRACallback(self.cfg))
 
         if (
@@ -131,14 +131,24 @@ class HFCausalTrainerBuilder(TrainerBuilderBase):
             trainer_cls = plugin_manager.get_trainer_cls(self.cfg)
             if trainer_cls:
                 return trainer_cls
-        if self.cfg.relora_steps:
-            return ReLoRATrainer
         if self.cfg.model_config_type == "mamba":
             return AxolotlMambaTrainer
         if self.cfg.reward_model:
             return AxolotlRewardTrainer
         if self.cfg.process_reward_model:
             return AxolotlPRMTrainer
+
+        if self.cfg.trainer_cls:
+            # override the trainer cls
+            try:
+                trainer_cls = get_cls_from_module_str(self.cfg.trainer_cls)
+                LOG.debug(f"Using custom trainer class: {self.cfg.trainer_cls}")
+                return trainer_cls
+            except (ImportError, AttributeError, ValueError) as e:
+                raise ValueError(
+                    f"Failed to load custom trainer class '{self.cfg.trainer_cls}': {e}"
+                ) from e
+
         return AxolotlTrainer
 
     def build(self, total_num_steps):
@@ -271,18 +281,23 @@ class HFCausalTrainerBuilder(TrainerBuilderBase):
                 self.cfg.sample_packing_eff_est
             )
 
-        if self.cfg.relora_steps:
-            training_arguments_kwargs["relora_steps"] = self.cfg.relora_steps
-            training_arguments_kwargs["relora_warmup_steps"] = (
-                self.cfg.relora_warmup_steps
-            )
-            if self.cfg.relora_anneal_steps:
-                training_arguments_kwargs["relora_anneal_steps"] = (
-                    self.cfg.relora_anneal_steps
-                )
+        if self.cfg.relora and self.cfg.jagged_restart_steps:
             if self.cfg.relora_prune_ratio:
                 training_arguments_kwargs["relora_prune_ratio"] = (
                     self.cfg.relora_prune_ratio
+                )
+
+        if self.cfg.jagged_restart_steps:
+            training_arguments_kwargs["jagged_restart_steps"] = (
+                self.cfg.jagged_restart_steps
+            )
+            if self.cfg.jagged_restart_warmup_steps:
+                training_arguments_kwargs["jagged_restart_warmup_steps"] = (
+                    self.cfg.jagged_restart_warmup_steps
+                )
+            if self.cfg.jagged_restart_anneal_steps:
+                training_arguments_kwargs["jagged_restart_anneal_steps"] = (
+                    self.cfg.jagged_restart_anneal_steps
                 )
 
         if self.cfg.lisa_step_interval and self.cfg.lisa_n_layers:
@@ -348,7 +363,7 @@ class HFCausalTrainerBuilder(TrainerBuilderBase):
             data_collator_kwargs["pad_to_multiple_of"] = multiple * math.ceil(
                 self.cfg.sequence_len / multiple
             )
-        else:
+        elif self.cfg.pad_to_sequence_len is None:
             # A100 is best at 64, while others at 8. Let's use the larger so we don't have to check
             # https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html
             data_collator_kwargs["pad_to_multiple_of"] = multiple

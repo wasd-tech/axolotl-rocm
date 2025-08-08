@@ -35,7 +35,6 @@ from transformers.trainer_utils import (
 from trl.models import unwrap_model_for_generation
 
 from axolotl.utils import is_comet_available, is_mlflow_available
-from axolotl.utils.bench import log_gpu_memory_usage
 from axolotl.utils.callbacks.perplexity import Perplexity
 from axolotl.utils.distributed import (
     barrier,
@@ -90,28 +89,6 @@ class SaveBetterTransformerModelCallback(
             # since we're saving here, we don't need the trainer loop to attempt to save too b/c
             # the trainer will raise an exception since it can't save a BetterTransformer wrapped model
             control.should_save = False
-        return control
-
-
-class GPUStatsCallback(
-    TrainerCallback
-):  # pylint: disable=too-few-public-methods disable=unused-argument
-    """Callback to track GPU utilization"""
-
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self.logged = False
-
-    def on_step_end(
-        self,
-        args: TrainingArguments,  # pylint: disable=unused-argument
-        state: TrainerState,
-        control: TrainerControl,
-        **kwargs,
-    ) -> TrainerControl:
-        if not self.logged and state.global_step > 1:
-            log_gpu_memory_usage(LOG, "while training", self.cfg.device)
-            self.logged = True
         return control
 
 

@@ -14,11 +14,12 @@ from axolotl.prompt_strategies.jinja_template_analyzer import JinjaTemplateAnaly
 from axolotl.prompt_tokenizers import PromptTokenizingStrategy
 from axolotl.prompters import IGNORE_TOKEN_ID, Prompter
 from axolotl.utils.chat_templates import get_chat_template_from_config
+from axolotl.utils.dict import remove_none_values
 from axolotl.utils.logging import get_logger
 from axolotl.utils.schemas.datasets import DatasetConfig
 
 if TYPE_CHECKING:
-    from axolotl.utils.mistral_tokenizer import HFMistralTokenizer
+    from axolotl.utils.mistral import HFMistralTokenizer
 
 # Configure the logger
 LOG = get_logger(__name__)
@@ -40,7 +41,9 @@ class ChatTemplatePrompter(Prompter):
         field_messages: str = "messages",
         field_system: str = "system",
         field_tools: str = "tools",
+        field_thinking: str = "reasoning_content",
         roles: dict[str, list[str]] | None = None,
+        template_thinking_key: str | None = "reasoning_content",
         chat_template_kwargs: dict[str, Any] | None = None,
         drop_system_message: bool = False,
     ):
@@ -49,8 +52,9 @@ class ChatTemplatePrompter(Prompter):
             message_property_mappings = {
                 "role": "role",
                 "content": "content",
-                "reasoning_content": "reasoning_content",
             }
+            if template_thinking_key and field_thinking:
+                message_property_mappings[template_thinking_key] = field_thinking
 
         if roles:
             self.roles = {s: t for t, sources in roles.items() for s in sources}
@@ -73,10 +77,12 @@ class ChatTemplatePrompter(Prompter):
         self.field_messages = field_messages
         self.field_system = field_system
         self.field_tools = field_tools
+        self.field_thinking = field_thinking
         self.tokenizer = tokenizer
         self.processor: ProcessorMixin | None = processor
         self.chat_template = chat_template
         self.chat_template_kwargs = chat_template_kwargs or {}
+        self.template_thinking_key: str = template_thinking_key or "reasoning_content"
         self.max_length = max_length
         self.drop_system_message = drop_system_message
 
@@ -379,21 +385,7 @@ class ChatTemplateStrategy(PromptTokenizingStrategy):
         Public method that can handle either a single prompt or a batch of prompts.
         """
 
-        def _remove_none_values(obj):
-            """
-            Remove null from a dictionary-like obj or list.
-            These can appear due to Dataset loading causing schema merge.
-            See https://github.com/axolotl-ai-cloud/axolotl/pull/2909
-            """
-            if hasattr(obj, "items"):
-                return {
-                    k: _remove_none_values(v) for k, v in obj.items() if v is not None
-                }
-            if isinstance(obj, list):
-                return [_remove_none_values(elem) for elem in obj]
-            return obj
-
-        prompt = _remove_none_values(prompt)
+        prompt = remove_none_values(prompt)
 
         if not self.is_prompt_batched(prompt) or not self.supports_batched:
             return self._tokenize_single_prompt(prompt)
@@ -502,6 +494,12 @@ class ChatTemplateStrategy(PromptTokenizingStrategy):
 
             if should_train and turn_start_idx != -1 and turn_end_idx != -1:
                 if train_detail:
+                    # Block multi-content for now
+                    if not isinstance(content, str):
+                        raise ValueError(
+                            "`train_detail` is not supported when `content` is not a string."
+                        )
+
                     token_offsets = self.prompter.get_offsets_for_train_detail(  # type: ignore
                         content, train_detail
                     )
@@ -749,7 +747,9 @@ class ChatTemplateStrategy(PromptTokenizingStrategy):
 
                     # get the thinking content
                     thinking_content = content[t_start_idx + len(tpair[0]) : t_end_idx]
-                    transformed_message["reasoning_content"] = thinking_content.strip()
+                    transformed_message[self.prompter.template_thinking_key] = (
+                        thinking_content.strip()
+                    )
 
                     # take remainder of the content
                     # strip whitespace from beginning of the remainder (thinking tokens)
@@ -960,6 +960,10 @@ class StrategyLoader:
                 None,
             ),
             "field_messages": dataset_config.get("field_messages", "messages"),
+            "field_thinking": dataset_config.get("field_thinking", "reasoning_content"),
+            "template_thinking_key": dataset_config.get(
+                "template_thinking_key", "reasoning_content"
+            ),
             "roles": dataset_config.get("roles"),
             "drop_system_message": dataset_config.get("drop_system_message", False),
             # we need to add one for detecting sequences with exceeding the `sequence_len` limit.

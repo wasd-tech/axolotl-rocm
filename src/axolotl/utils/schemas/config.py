@@ -43,7 +43,7 @@ from axolotl.utils.schemas.model import (
 from axolotl.utils.schemas.multimodal import MultiModalConfig
 from axolotl.utils.schemas.peft import LoraConfig, ReLoRAConfig
 from axolotl.utils.schemas.quantization import PTQConfig, QATConfig
-from axolotl.utils.schemas.training import HyperparametersConfig
+from axolotl.utils.schemas.training import HyperparametersConfig, JaggedLRConfig
 from axolotl.utils.schemas.trl import TRLConfig
 from axolotl.utils.schemas.validation import ValidationMixin
 from axolotl.utils.schemas.vllm import VllmConfig
@@ -57,6 +57,7 @@ class AxolotlInputConfig(
     ModelOutputConfig,
     LoraConfig,
     ReLoRAConfig,
+    JaggedLRConfig,
     HyperparametersConfig,
     WandbConfig,
     MLFlowConfig,
@@ -106,6 +107,13 @@ class AxolotlInputConfig(
         default=None,
         json_schema_extra={
             "description": "Don't upcast the embeddings to float32 when using PEFT. Useful for low-VRAM GPUs"
+        },
+    )
+
+    trainer_cls: str | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "module to custom trainer class to use for training"
         },
     )
 
@@ -177,6 +185,12 @@ class AxolotlInputConfig(
         default=True,
         json_schema_extra={
             "description": "If false, the datasets will not be shuffled and will keep their original order in `datasets`. The same applies to the `test_datasets` option and the `pretraining_dataset` option. Default is true."
+        },
+    )
+    shuffle_before_merging_datasets: bool | None = Field(
+        default=False,
+        json_schema_extra={
+            "description": "If true, each dataset in `datasets` will be shuffled before merging. This allows curriculum learning strategies to be applied at the dataset level. Default is false."
         },
     )
     dataset_prepared_path: str | None = Field(
@@ -524,12 +538,6 @@ class AxolotlInputConfig(
             "description": "Whether to use flash-attention rms norm implementation - advanced use only"
         },
     )
-    flash_attn_fuse_qkv: bool | None = Field(
-        default=None,
-        json_schema_extra={
-            "description": "Whether to fuse QKV into a single operation"
-        },
-    )
     flash_attn_fuse_mlp: bool | None = Field(
         default=None,
         json_schema_extra={
@@ -542,6 +550,13 @@ class AxolotlInputConfig(
     )
 
     eager_attention: bool | None = None
+
+    attn_implementation: str | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "Specify a custom attention implementation, used mostly for kernels."
+        },
+    )
 
     unsloth_cross_entropy_loss: bool | None = None
     unsloth_lora_mlp: bool | None = None
@@ -644,7 +659,23 @@ class AxolotlInputConfig(
         },
     )
 
+    dp_shard_size: int | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "Number of devices to shard across. If not set, will use all available devices."
+        },
+    )
+    dp_replicate_size: int | None = Field(
+        default=None,
+        json_schema_extra={"description": "Number of devices to replicate across."},
+    )
     sequence_parallel_degree: int | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": "Deprecated: use `context_parallel_size` instead"
+        },
+    )
+    context_parallel_size: int | None = Field(
         default=None,
         json_schema_extra={
             "description": "Set to a divisor of the number of GPUs available to split sequences into chunks of equal size. Use in long context training to prevent OOM when sequences cannot fit into a single GPU's VRAM. E.g., if 4 GPUs are available, set this value to 2 to split each sequence into two equal-sized subsequences, or set to 4 to split into four equal-sized subsequences. See https://docs.axolotl.ai/docs/sequence_parallelism.html for more details."

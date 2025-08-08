@@ -45,8 +45,8 @@ extras_require = {
         "flash-attn==2.8.0.post2"
     ],
     "ring-flash-attn": [
-        "flash-attn==2.8.0.post2",
-        "ring-flash-attn>=0.1.5",
+        "flash-attn==2.8.2",
+        "ring-flash-attn>=0.1.7",
         "yunchang==0.6.0",
     ],
     "deepspeed": [
@@ -83,7 +83,6 @@ extras_require = {
         "llmcompressor==0.5.1",
     ],
 }
-
 install_requires, dependency_links, extras_require_build = parse_requirements(
     extras_require
 )
