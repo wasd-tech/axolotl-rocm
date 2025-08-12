@@ -6,24 +6,20 @@ This guide shows how to fine-tune it with Axolotl with multi-turn conversations 
 
 ## Getting started
 
-1. Install Axolotl following the [installation guide](https://docs.axolotl.ai/docs/installation.html). You need to install from main as GPT-OSS is only on nightly or use our latest [Docker images](https://docs.axolotl.ai/docs/docker.html).
+1. Install Axolotl following the [installation guide](https://docs.axolotl.ai/docs/installation.html).
 
-    Here is an example of how to install from main for pip:
+    Here is an example of how to install from pip:
 
 ```bash
 # Ensure you have Pytorch installed (Pytorch 2.6.0 min)
-git clone https://github.com/axolotl-ai-cloud/axolotl.git
-cd axolotl
-
 pip3 install packaging==23.2 setuptools==75.8.0 wheel ninja
-pip3 install --no-build-isolation -e '.[flash-attn]'
+pip3 install --no-build-isolation 'axolotl[flash-attn]>=0.12.0'
 ```
 
-2. Choose one of the following configs below for training the 20B model.
+2. Choose one of the following configs below for training the 20B model. (for 120B, see [below](#training-120b))
 
 ```bash
-# LoRA SFT linear layers & 2 experts (1x48GB @ ~47GiB)
-# (only linear layers @ ~44GiB)
+# LoRA SFT linear layers (1x48GB @ ~44GiB)
 axolotl train examples/gpt-oss/gpt-oss-20b-sft-lora-singlegpu.yaml
 
 # FFT SFT with offloading (2x24GB @ ~21GiB/GPU)
@@ -33,9 +29,16 @@ axolotl train examples/gpt-oss/gpt-oss-20b-fft-fsdp2-offload.yaml
 axolotl train examples/gpt-oss/gpt-oss-20b-fft-fsdp2.yaml
 ```
 
-Notes:
-- 120B coming soon!
-- Memory usage taken from `device_mem_reserved(gib)` from logs.
+Note: Memory usage taken from `device_mem_reserved(gib)` from logs.
+
+### Training 120B
+
+On 8xH100s
+
+```bash
+# FFT SFT with offloading (8x80GB @ ~49GiB/GPU)
+axolotl train examples/gpt-oss/gpt-oss-120b-fft-fsdp2-offload.yaml
+```
 
 ### Tool use
 
