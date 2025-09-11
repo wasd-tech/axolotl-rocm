@@ -45,12 +45,12 @@ extras_require = {
         "flash-attn==2.8.0.post2"
     ],
     "ring-flash-attn": [
-        "flash-attn==2.8.2",
+        "flash-attn==2.8.3",
         "ring-flash-attn>=0.1.7",
         "yunchang==0.6.0",
     ],
     "deepspeed": [
-        "deepspeed==0.17.2",
+        "deepspeed==0.17.5",
         "deepspeed-kernels",
     ],
     "mamba-ssm": [
