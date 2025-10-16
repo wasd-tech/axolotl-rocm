@@ -30,11 +30,7 @@ from axolotl.contribs.lgpl import (  # pylint: disable = no-name-in-module
     fix_untrained_tokens,
 )
 from axolotl.integrations.base import PluginManager
-from axolotl.loaders import (
-    ModelLoader,
-    load_processor,
-    load_tokenizer,
-)
+from axolotl.loaders import ModelLoader, load_processor, load_tokenizer
 from axolotl.utils.ctx_managers.sequence_parallel import SequenceParallelContextManager
 from axolotl.utils.dict import DictDefault
 from axolotl.utils.distributed import cleanup_distributed
@@ -43,11 +39,6 @@ from axolotl.utils.logging import get_logger
 from axolotl.utils.schemas.enums import RLType
 from axolotl.utils.train import determine_last_checkpoint
 from axolotl.utils.trainer import setup_trainer
-
-try:
-    from optimum.bettertransformer import BetterTransformer
-except ImportError:
-    BetterTransformer = None
 
 if typing.TYPE_CHECKING:
     from axolotl.core.builders import HFCausalTrainerBuilder, HFRLTrainerBuilder
@@ -145,8 +136,6 @@ def setup_signal_handler(
         def terminate_handler(_, __, model_weakref):
             if model_weakref() is not None:
                 _model = model_weakref()
-                if cfg.flash_optimum and BetterTransformer:
-                    _model = BetterTransformer.reverse(_model)
                 _model.save_pretrained(
                     cfg.output_dir, safe_serialization=safe_serialization
                 )
@@ -200,10 +189,11 @@ def execute_training(
                 )
             )
 
-        LOG.info("Starting trainer...")
         # TODO: disabling for now as not compatible with FSDP2 + torchao low bit optimizers
         # if cfg.bf16:
         #     torch.set_default_dtype(torch.bfloat16)
+
+        LOG.info("Starting trainer...")
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
         plugin_manager = PluginManager.get_instance()
@@ -234,16 +224,15 @@ def save_trained_model(
 
     # handle QAT
     if cfg.qat:
-        from axolotl.utils.quantization import convert_qat_model_for_ptq
+        from axolotl.utils.quantization import convert_qat_model
 
-        LOG.info("Processing QAT model for saving...")
-        convert_qat_model_for_ptq(
+        convert_qat_model(
             model,
             quantize_embedding=cfg.qat.quantize_embedding,
         )
         LOG.info(
-            "QAT modules have been converted for PTQ. Please ensure you quantize "
-            "your model weights with `axolotl quantize`."
+            "QAT usage note: please ensure you quantize your model fine-tuned using QAT by running `axolotl quantize`"
+            " with the same config which you used for training."
         )
     # Handle ReLoRA early return case
     if cfg.relora:
@@ -325,9 +314,6 @@ def save_trained_model(
             except FileNotFoundError:
                 pass
     elif cfg.local_rank == 0:
-        if cfg.flash_optimum and BetterTransformer:
-            model = BetterTransformer.reverse(model)
-
         if cfg.rl and cfg.adapter and not cfg.rl_adapter_ref_model:
             trainer.model.save_pretrained(
                 cfg.output_dir, safe_serialization=safe_serialization
@@ -337,9 +323,7 @@ def save_trained_model(
 
     if hasattr(cfg, "llmcompressor") and cfg.llmcompressor:
         # TODO: add integration support so this can be implemented completely within the plugin
-        from axolotl.integrations.llm_compressor.utils import (
-            save_compressed_model,
-        )
+        from axolotl.integrations.llm_compressor.utils import save_compressed_model
 
         save_compressed_model(
             model=model,
@@ -540,6 +524,17 @@ def setup_model_and_trainer(
 
     plugin_manager = PluginManager.get_instance()
     plugin_manager.post_trainer_create(cfg, trainer)
+
+    if cfg.use_ray:
+        try:
+            import ray.train.huggingface.transformers
+
+            trainer = ray.train.huggingface.transformers.prepare_trainer(trainer)
+        except ImportError:
+            LOG.warning(
+                "The Ray integration with Hugging Face Transformers is not available. "
+                "To use Ray, install the 'ray[train]' package."
+            )
 
     return (
         trainer,

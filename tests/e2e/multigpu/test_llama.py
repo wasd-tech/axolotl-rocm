@@ -199,7 +199,7 @@ class TestMultiGPULlama:
                 "max_steps": 2,
                 "micro_batch_size": 2,
                 "gradient_accumulation_steps": 2,
-                # "gradient_checkpointing": True,
+                "gradient_checkpointing": False,
                 "output_dir": temp_dir,
                 "dataset_prepared_path": temp_dir + "/last_run_prepared",
                 "warmup_steps": 0,
@@ -278,7 +278,7 @@ class TestMultiGPULlama:
                 "max_steps": 2,
                 "micro_batch_size": 2,
                 "gradient_accumulation_steps": 2,
-                # "gradient_checkpointing": True,
+                "gradient_checkpointing": False,
                 "output_dir": temp_dir,
                 "dataset_prepared_path": temp_dir + "/last_run_prepared",
                 "warmup_steps": 0,
@@ -353,7 +353,6 @@ class TestMultiGPULlama:
                     "auto_wrap",
                 ],
                 "fsdp_config": {
-                    "fsdp_limit_all_gathers": True,
                     "fsdp_offload_params": False,
                     "fsdp_sync_module_states": True,
                     "fsdp_use_orig_params": False,
@@ -431,7 +430,6 @@ class TestMultiGPULlama:
                     "auto_wrap",
                 ],
                 "fsdp_config": {
-                    "fsdp_limit_all_gathers": True,
                     "fsdp_offload_params": False,
                     "fsdp_sync_module_states": True,
                     "fsdp_use_orig_params": False,
@@ -594,7 +592,6 @@ class TestMultiGPULlama:
                     "auto_wrap",
                 ],
                 "fsdp_config": {
-                    "fsdp_limit_all_gathers": True,
                     "fsdp_offload_params": False,
                     "fsdp_sync_module_states": True,
                     "fsdp_use_orig_params": False,

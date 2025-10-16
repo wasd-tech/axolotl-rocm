@@ -24,6 +24,7 @@ from axolotl.utils.schemas.datasets import (
 )
 from axolotl.utils.schemas.deprecated import DeprecatedParameters, RemappedParameters
 from axolotl.utils.schemas.enums import ChatTemplate, RingAttnFunc, RLType
+from axolotl.utils.schemas.fsdp import FSDPConfig
 from axolotl.utils.schemas.integrations import (
     CometConfig,
     GradioConfig,
@@ -233,6 +234,7 @@ class AxolotlInputConfig(
     )
     dataset_processes: int | None = Field(
         default=None,
+        deprecated="Use `dataset_num_proc` instead. This parameter will be removed in a future version.",
         json_schema_extra={
             "description": (
                 "The maximum number of processes to use while preprocessing your input dataset. This defaults to `os.cpu_count()` if not set.\n"
@@ -240,6 +242,16 @@ class AxolotlInputConfig(
             )
         },
     )
+    dataset_num_proc: int | None = Field(
+        default=None,
+        json_schema_extra={
+            "description": (
+                "The maximum number of processes to use while preprocessing your input dataset. This defaults to `os.cpu_count()` if not set.\n"
+                "For Runpod VMs, it will default to number of vCPUs via RUNPOD_CPU_COUNT."
+            )
+        },
+    )
+
     dataset_exact_deduplication: bool | None = Field(
         default=None,
         json_schema_extra={
@@ -436,8 +448,8 @@ class AxolotlInputConfig(
         },
     )
     min_sample_len: int | None = None
-    max_prompt_len: int = Field(
-        default=512,
+    max_prompt_len: int | None = Field(
+        default=None,
         json_schema_extra={"description": "maximum prompt length for RL training"},
     )
     sample_packing: bool | None = Field(
@@ -667,8 +679,7 @@ class AxolotlInputConfig(
         json_schema_extra={"description": "FSDP configuration"},
         deprecated="Configuring FSDP using `fsdp` is deprecated. Please use `fsdp_config` instead. ",
     )
-    # TODO @SalmanMohammadi strongly type this as its own schema
-    fsdp_config: dict[str, Any] | None = Field(
+    fsdp_config: FSDPConfig | None = Field(
         default=None, json_schema_extra={"description": "FSDP configuration options"}
     )
     fsdp_version: int | None = Field(
@@ -1314,10 +1325,22 @@ class AxolotlConfigWCapabilities(AxolotlInputConfig):
 
     @model_validator(mode="before")
     @classmethod
-    def default_dataset_processes(cls, data):
-        if data.get("dataset_processes") is None:
-            data["dataset_processes"] = get_default_process_count()
-
+    def default_dataset_num_proc(cls, data):
+        if data.get("dataset_processes") is not None:
+            if data.get("dataset_num_proc") is None:
+                data["dataset_num_proc"] = data["dataset_processes"]
+                LOG.warning(
+                    "dataset_processes is deprecated and will be removed in a future version. "
+                    "Please use dataset_num_proc instead."
+                )
+            else:
+                LOG.warning(
+                    "Both dataset_processes and dataset_num_proc are set. "
+                    "Using dataset_num_proc and ignoring dataset_processes."
+                )
+            del data["dataset_processes"]
+        elif data.get("dataset_num_proc") is None:
+            data["dataset_num_proc"] = get_default_process_count()
         return data
 
     @model_validator(mode="before")
