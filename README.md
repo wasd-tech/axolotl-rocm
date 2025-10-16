@@ -70,6 +70,7 @@ Features:
 - AMD GPU
 - *Python 3.12!*
 - PyTorch
+- ROCm 6.4
 
 #### Using AMD
 
